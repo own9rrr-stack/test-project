@@ -1,10 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="refresh" content="0; url=googlechrome://navigate?url=https://www.anrc.shop/fa/">
+<script>
+    const ua = navigator.userAgent.toLowerCase();
+
+    // اگر کاربر آیفون یا آیپد بود → سافاری
+    if (ua.includes("iphone") || ua.includes("ipad")) {
+        window.location.href = "https://www.anrc.shop/fa/";
+    }
+
+    // اگر کاربر اندروید بود → کروم
+    else if (ua.includes("android")) {
+        window.location.href = "googlechrome://navigate?url=https://www.anrc.shop/fa/";
+    }
+
+    // اگر کاربر ویندوز یا مک بود → کروم معمولی
+    else {
+        window.location.href = "https://www.anrc.shop/fa/";
+    }
+</script>
 </head>
 <body>
-اگر کروم باز نشد، روی این لینک کلیک کنید:
-<a href="googlechrome://navigate?url=https://www.anrc.shop/fa/">باز کردن در کروم</a>
+اگر هدایت نشدید، روی این لینک کلیک کنید:
+<a href="https://www.anrc.shop/fa/">باز کردن سایت</a>
 </body>
 </html>
