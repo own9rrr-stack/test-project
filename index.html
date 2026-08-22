@@ -1,27 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <script>
     const ua = navigator.userAgent.toLowerCase();
 
-    // اگر کاربر آیفون یا آیپد بود → سافاری
-    if (ua.includes("iphone") || ua.includes("ipad")) {
-        window.location.href = "https://www.anrc.shop/fa/";
-    }
+    // تابع هدایت بعد از ۳ ثانیه
+    setTimeout(function() {
 
-    // اگر کاربر اندروید بود → کروم
-    else if (ua.includes("android")) {
-        window.location.href = "googlechrome://navigate?url=https://www.anrc.shop/fa/";
-    }
+        // اگر کاربر آیفون یا آیپد بود → سافاری
+        if (ua.includes("iphone") || ua.includes("ipad")) {
+            window.location.href = "https://www.anrc.shop/fa/";
+        }
 
-    // اگر کاربر ویندوز یا مک بود → کروم معمولی
-    else {
-        window.location.href = "https://www.anrc.shop/fa/";
-    }
+        // اگر کاربر اندروید بود → کروم
+        else if (ua.includes("android")) {
+            window.location.href = "googlechrome://navigate?url=https://www.anrc.shop/fa/";
+        }
+
+        // اگر کاربر ویندوز یا مک بود → مرورگر معمولی
+        else {
+            window.location.href = "https://www.anrc.shop/fa/";
+        }
+
+    }, 3000); // ۳۰۰۰ میلی‌ثانیه = ۳ ثانیه
 </script>
 </head>
 <body>
-اگر هدایت نشدید، روی این لینک کلیک کنید:
-<a href="https://www.anrc.shop/fa/">باز کردن سایت</a>
+در حال بارگذاری...
 </body>
 </html>
