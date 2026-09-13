@@ -133,6 +133,7 @@
       z-index: 10;
       box-shadow: 0 4px 10px rgba(0,0,0,0.6);
       transform: rotate(-15deg);
+      pointer-events: none;
     }
 
     /* دیسک شیشه‌ای متحرک */
@@ -148,6 +149,7 @@
       cursor: grab;
       touch-action: none;
       box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+      transform-origin: center center;
     }
 
     .rotary-wheel:active {
@@ -245,27 +247,34 @@
       { id: 'instagram', title: 'اینستاگرام', icon: 'fa-brands fa-instagram', url: 'https://instagram.com' },
       { id: 'tg-channel', title: 'کانال خبری', icon: 'fa-solid fa-bullhorn', url: 'https://t.me/BetMiz' },
       { id: 'website', title: 'وبسایت رسمی', icon: 'fa-solid fa-globe', url: 'https://www.betmiz.com' },
-      { 
-        id: 'app-download', title: 'دانلود مستقیم اپلیکیشن', icon: 'fa-solid fa-download', // یا 'fa-brands fa-android' برای آیکون اندروید
-        url: 'https://android.codeideally.com/v2/mp/prod/18756065/app.apk' // آدرس مستقیم فایل دانلودی شما
-      }
+      { id: 'app-download', title: 'دانلود مستقیم اپلیکیشن', icon: 'fa-solid fa-download', url: 'https://android.codeideally.com/v2/mp/prod/18756065/app.apk' }
     ];
 
     const wheel = document.getElementById('wheel');
     const statusText = document.getElementById('status-text');
 
-    const RADIUS = 115; // فاصله سوراخ‌ها از مرکز
-    const STOP_ANGLE = 135; // زاویه متناظر با Finger Stop (درجه)
-    const START_ANGLE = 220; // زاویه قرارگیری اولین سوراخ
-    const STEP_ANGLE = 35;  // فاصله زاویه‌ای بین هر سوراخ
+    const RADIUS = 115;      // فاصله سوراخ‌ها از مرکز
+    const STOP_ANGLE = 135;   // زاویه متناظر با پین توقف (درجه)
+    const START_ANGLE = 220;  // زاویه شروع اولین سوراخ
+    const STEP_ANGLE = 35;    // فاصله زاویه‌ای بین هر سوراخ
+
+    // زاویه هدف چرخش برای رسیدن هر سوراخ به پین توقف
+    const targetAngles = DIAL_ITEMS.map((_, i) => {
+      const holeAngle = START_ANGLE + (i * STEP_ANGLE);
+      return (360 + STOP_ANGLE - holeAngle) % 360;
+    });
+    // حداکثر زاویه مجاز چرخش (بر اساس دورترین آیکون)
+    const MAX_ALLOWED_ROTATION = Math.max(...targetAngles) + 15;
 
     let currentRotation = 0;
     let isDragging = false;
     let startAngle = 0;
     let initialRotation = 0;
-    let activeItem = null;
+    let grabbedItemIndex = null;
+    let hasMoved = false;
+    let lastSoundRotation = 0;
 
-    // افکت صوتی با Web Audio API بدون نیاز به فایل صوتی جانبی
+    // افکت صوتی با Web Audio API
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playClickSound() {
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -282,7 +291,7 @@
       osc.stop(audioCtx.currentTime + 0.05);
     }
 
-    // جای‌گذاری سوراخ‌ها روی چرخ دنده
+    // ساخت سوراخ‌های شماره‌گیر
     DIAL_ITEMS.forEach((item, index) => {
       const hole = document.createElement('div');
       hole.className = 'dial-hole';
@@ -297,19 +306,17 @@
       hole.style.top = `${y}px`;
       hole.innerHTML = `<i class="${item.icon}"></i>`;
       hole.setAttribute('title', item.title);
-      
-      // اگر مستقیماً کلیک شد، خودش خودکار بچرخد
-      hole.addEventListener('click', (e) => {
-        if (!isDragging) {
-          triggerAutoDial(item, angleDeg);
-        }
+
+      // ثبت لمس هر سوراخ
+      hole.addEventListener('pointerdown', (e) => {
+        grabbedItemIndex = index;
       });
 
       wheel.appendChild(hole);
     });
 
     function setRotation(deg, smooth = false) {
-      wheel.style.transition = smooth ? 'transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none';
+      wheel.style.transition = smooth ? 'transform 0.65s cubic-bezier(0.2, 0.9, 0.3, 1.2)' : 'none';
       wheel.style.transform = `rotate(${deg}deg)`;
       currentRotation = deg;
     }
@@ -325,14 +332,17 @@
       return deg < 0 ? deg + 360 : deg;
     }
 
-    // عملکرد Drag با موس و لمس
+    // رویداد شروع درگ
     wheel.addEventListener('pointerdown', (e) => {
       isDragging = true;
+      hasMoved = false;
       startAngle = getAngle(e);
       initialRotation = currentRotation;
+      lastSoundRotation = currentRotation;
       wheel.style.transition = 'none';
     });
 
+    // حرکت درگ
     window.addEventListener('pointermove', (e) => {
       if (!isDragging) return;
       const currentMouseAngle = getAngle(e);
@@ -341,58 +351,79 @@
       if (delta < -180) delta += 360;
       if (delta > 180) delta -= 360;
 
+      if (Math.abs(delta) > 3) {
+        hasMoved = true;
+      }
+
       let newRot = initialRotation + delta;
       
-      // محدودیت چرخش در جهت ساعت‌گرد
-      if (newRot >= 0 && newRot <= 250) {
-        if (Math.abs(newRot - currentRotation) > 15) {
+      // سقف تا مقدار دینامیک دورترین آیتم (~300 درجه) باز شده است
+      if (newRot >= 0 && newRot <= MAX_ALLOWED_ROTATION) {
+        if (Math.abs(newRot - lastSoundRotation) > 18) {
           playClickSound();
+          lastSoundRotation = newRot;
         }
         setRotation(newRot, false);
+
+        if (grabbedItemIndex !== null) {
+          statusText.innerText = `در حال چرخش: ${DIAL_ITEMS[grabbedItemIndex].title}`;
+        }
       }
     });
 
+    // پایان درگ
     window.addEventListener('pointerup', () => {
       if (!isDragging) return;
       isDragging = false;
-      
-      // بررسی اینکه آیا به حد کافی نزدیک به استاپ چرخیده یا نه
+
+      // اگر کاربر فقط کلیک کرد بدون چرخاندن
+      if (!hasMoved && grabbedItemIndex !== null) {
+        const item = DIAL_ITEMS[grabbedItemIndex];
+        const targetRot = targetAngles[grabbedItemIndex];
+        triggerAutoDial(item, targetRot);
+        grabbedItemIndex = null;
+        return;
+      }
+
+      // بررسی اینکه آیا سوراخ گرفته‌شده به پین توقف رسیده یا نه
       let triggered = false;
-      DIAL_ITEMS.forEach((item, index) => {
-        const itemAngle = START_ANGLE + (index * STEP_ANGLE);
-        const targetRot = (360 + STOP_ANGLE - itemAngle) % 360;
-        if (Math.abs(currentRotation - targetRot) < 20) {
-          executeRedirect(item);
+      if (grabbedItemIndex !== null) {
+        const targetRot = targetAngles[grabbedItemIndex];
+        // تلرانس ۲۲ درجه برای راحتی کاربر
+        if (currentRotation >= targetRot - 22) {
+          executeRedirect(DIAL_ITEMS[grabbedItemIndex]);
           triggered = true;
         }
-      });
+      }
 
-      // بازگشت فنری به نقطه صفر
+      // برگشت فنری به نقطه صفر
       setRotation(0, true);
+      grabbedItemIndex = null;
+
       if (!triggered) {
-        statusText.innerText = 'آماده برای شماره‌گیری...';
+        setTimeout(() => {
+          statusText.innerText = 'آماده برای شماره‌گیری...';
+        }, 300);
       }
     });
 
-    // چرخش خودکار با کلیک روی آیتم
-    function triggerAutoDial(item, itemAngle) {
-      const targetRot = (360 + STOP_ANGLE - itemAngle) % 360;
+    // انیمیشن خودکار هنگام کلیک ساده
+    function triggerAutoDial(item, targetRot) {
       playClickSound();
       setRotation(targetRot, true);
-      
       statusText.innerText = `در حال اتصال به ${item.title}...`;
 
       setTimeout(() => {
         setRotation(0, true);
         executeRedirect(item);
-      }, 700);
+      }, 650);
     }
 
     function executeRedirect(item) {
       statusText.innerText = `انتقال به ${item.title}`;
       setTimeout(() => {
         window.open(item.url, '_blank');
-      }, 400);
+      }, 350);
     }
   </script>
 </body>
