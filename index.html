@@ -21,6 +21,11 @@
       --dial-border: #1e4b3c;
       --text-main: #f0fdf4;
       --text-muted: #86efac;
+
+      /* مقادیر زنده که با انتخاب کاربر توسط جاوااسکریپت تغییر می‌کنند */
+      --dial-rotor-live: var(--dial-rotor);
+      --dial-border-live: var(--dial-border);
+      --live-accent: var(--accent-lime);
     }
 
     * {
@@ -31,7 +36,12 @@
       -webkit-user-select: none;
     }
 
+    html, body {
+      height: 100%;
+    }
+
     body {
+      position: relative;
       min-height: 100vh;
       overflow: hidden;
       display: flex;
@@ -41,12 +51,34 @@
       color: var(--text-main);
       font-family: "Vazirmatn", Tahoma, sans-serif;
       background: var(--bg-gradient);
+      isolation: isolate; /* تضمین می‌کند لایه‌های محیطی زیر محتوا بمانند */
+    }
+
+    /* ---------------------------------------------------- */
+    /* لایه‌های محیطی: کل فضای پشت صفحه بر اساس انتخاب کاربر تغییر رنگ و نور می‌دهد */
+    /* از دو لایه برای کراس‌فید نرم بین تم‌ها استفاده می‌شود */
+    /* ---------------------------------------------------- */
+    .ambient-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.85s ease;
+      background-color: transparent;
+    }
+
+    .header-text,
+    .dial-container,
+    .status-badge {
+      position: relative;
+      z-index: 5;
     }
 
     .header-text {
-      z-index: 20;
       margin-bottom: 24px;
       text-align: center;
+      transition: color 0.6s ease;
     }
 
     .header-text h1 {
@@ -63,7 +95,6 @@
     }
 
     .dial-container {
-      position: relative;
       width: 340px;
       height: 340px;
       display: flex;
@@ -80,7 +111,8 @@
       box-shadow:
         0 25px 50px -12px rgba(0, 0, 0, 0.7),
         inset 0 2px 4px rgba(255, 255, 255, 0.05),
-        0 0 0 8px var(--dial-border);
+        0 0 0 8px var(--dial-border-live);
+      transition: box-shadow 0.7s ease;
     }
 
     .rotary-wheel {
@@ -88,14 +120,15 @@
       z-index: 5;
       width: 320px;
       height: 320px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 50%;
-      background: var(--dial-rotor);
+      background: var(--dial-rotor-live);
       box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
       backdrop-filter: blur(8px);
       cursor: grab;
       touch-action: none;
       transform-origin: center center;
+      transition: background 0.7s ease, border-color 0.7s ease;
     }
 
     .rotary-wheel:active {
@@ -158,14 +191,12 @@
       border: 2px solid var(--accent-lime);
       border-radius: 50%;
       background: rgba(6, 26, 20, 0.92);
-      box-shadow:
-        inset 0 3px 6px rgba(0, 0, 0, 0.8),
-        0 2px 5px rgba(0, 0, 0, 0.3);
+      box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.8), 0 2px 5px rgba(0, 0, 0, 0.3);
       color: #fff;
       font-size: 1.3rem;
       cursor: grab;
       transform: translate(-50%, -50%);
-      transition: background 0.2s, border-color 0.2s;
+      transition: background 0.25s ease, border-color 0.35s ease, color 0.25s ease;
     }
 
     .dial-hole:hover {
@@ -175,6 +206,12 @@
 
     .dial-hole i {
       pointer-events: none;
+      transition: color 0.25s ease;
+    }
+
+    /* سوراخ نزدیک به شاخص فقط با تغییر رنگ لبه مشخص می‌شود، بدون هیچ هاله نوری */
+    .dial-hole.active-target {
+      border-color: var(--brand-color, var(--accent-yellow));
     }
 
     .status-badge {
@@ -183,20 +220,22 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      border: 1px solid rgba(74, 222, 128, 0.3);
+      border: 1px solid color-mix(in srgb, var(--live-accent) 45%, transparent);
       border-radius: 20px;
-      background: rgba(74, 222, 128, 0.1);
-      color: var(--accent-lime);
+      background: color-mix(in srgb, var(--live-accent) 12%, transparent);
+      color: var(--live-accent);
       font-size: 0.85rem;
+      transition: border-color 0.6s ease, background 0.6s ease, color 0.6s ease;
     }
 
     .pulse {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--accent-lime);
-      box-shadow: 0 0 10px var(--accent-lime);
+      background: var(--live-accent);
+      box-shadow: 0 0 10px var(--live-accent);
       animation: pulse 1.5s infinite;
+      transition: background 0.6s ease, box-shadow 0.6s ease;
     }
 
     @keyframes pulse {
@@ -213,6 +252,10 @@
 </head>
 
 <body>
+  <!-- لایه‌های محیطی پشت همه‌چیز -->
+  <div class="ambient-layer" id="ambient-a"></div>
+  <div class="ambient-layer" id="ambient-b"></div>
+
   <div class="header-text">
     <h1>هاب ارتباطی مدرن</h1>
     <p>برای اتصال، دکمه مورد نظر را در جهت ساعت‌گرد تا شاخص زرد بچرخانید</p>
@@ -236,73 +279,140 @@
   </div>
 
   <script>
+    // هر آیتم علاوه بر رنگ خودش، یک "تم محیطی" کامل دارد که کل پس‌زمینه و گردونه را متحول می‌کند
     const DIAL_ITEMS = [
       {
         id: "tg-support",
         title: "پشتیبانی تلگرام",
         icon: "fa-brands fa-telegram",
-        url: "https://t.me/betmizlivesupportbot"
+        url: "https://t.me/betmizlivesupportbot",
+        color: "#29A9EA",
+        ambient: `
+          radial-gradient(circle at 28% 20%, rgba(41,169,234,0.55), transparent 58%),
+          radial-gradient(circle at 78% 78%, rgba(34,158,217,0.32), transparent 55%),
+          repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 2px, transparent 2px, transparent 42px),
+          linear-gradient(160deg, #04263b 0%, #071a2b 60%, #030f1c 100%)
+        `,
+        dialRotor: "rgba(20, 66, 96, 0.78)",
+        dialBorder: "#1c5a80"
       },
       {
         id: "instagram",
         title: "اینستاگرام",
         icon: "fa-brands fa-instagram",
-        url: "https://instagram.com"
+        url: "https://instagram.com",
+        color: "#E1306C",
+        ambient: `
+          radial-gradient(circle at 22% 15%, rgba(253,29,161,0.5), transparent 55%),
+          radial-gradient(circle at 78% 28%, rgba(245,96,64,0.45), transparent 55%),
+          radial-gradient(circle at 50% 88%, rgba(131,58,180,0.5), transparent 60%),
+          linear-gradient(135deg, #3a1c53 0%, #521c48 35%, #7c1f4a 65%, #8f2b2b 100%)
+        `,
+        dialRotor: "rgba(96, 32, 74, 0.78)",
+        dialBorder: "#a3306a"
       },
       {
         id: "tg-channel",
         title: "کانال خبری",
         icon: "fa-solid fa-bullhorn",
-        url: "https://t.me/BetMiz"
+        url: "https://t.me/BetMiz",
+        color: "#1C7ED6",
+        ambient: `
+          radial-gradient(circle at 30% 25%, rgba(28,126,214,0.5), transparent 55%),
+          radial-gradient(circle at 75% 75%, rgba(20,80,150,0.4), transparent 55%),
+          repeating-linear-gradient(115deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 46px),
+          linear-gradient(160deg, #071a33 0%, #050f22 60%, #020814 100%)
+        `,
+        dialRotor: "rgba(16, 48, 78, 0.78)",
+        dialBorder: "#1d5f92"
       },
       {
         id: "website",
         title: "وب‌سایت رسمی",
         icon: "fa-solid fa-globe",
-        url: "https://www.betmiz.com"
+        url: "https://www.betmiz.com",
+        color: "#4ade80",
+        ambient: `
+          repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 78px),
+          repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 78px),
+          radial-gradient(circle at 50% 28%, rgba(74,222,128,0.4), transparent 60%),
+          linear-gradient(160deg, #0b3d1f 0%, #072b16 55%, #04180d 100%)
+        `,
+        dialRotor: "rgba(15, 62, 36, 0.78)",
+        dialBorder: "#2f7a45"
       },
       {
         id: "app-download",
         title: "دانلود مستقیم اپلیکیشن",
         icon: "fa-solid fa-download",
-        url: "https://android.codeideally.com/v2/mp/prod/18756065/app.apk"
+        url: "https://android.codeideally.com/v2/mp/prod/18756065/app.apk",
+        color: "#3DDC84",
+        ambient: `
+          repeating-linear-gradient(45deg, rgba(61,220,132,0.08) 0px, rgba(61,220,132,0.08) 10px, transparent 10px, transparent 20px),
+          radial-gradient(circle at 72% 20%, rgba(61,220,132,0.5), transparent 55%),
+          linear-gradient(160deg, #0a3323 0%, #062318 60%, #03120c 100%)
+        `,
+        dialRotor: "rgba(15, 58, 40, 0.78)",
+        dialBorder: "#2fae6f"
       }
     ];
 
     const wheel = document.getElementById("wheel");
     const statusText = document.getElementById("status-text");
+    const root = document.documentElement;
+    const ambientA = document.getElementById("ambient-a");
+    const ambientB = document.getElementById("ambient-b");
 
     const WHEEL_SIZE = 320;
     const CENTER = WHEEL_SIZE / 2;
     const RADIUS = 115;
 
-    // موقعیت شاخص توقف: 135 درجه (پایین سمت چپ)
     const STOP_ANGLE = 135;
-    
-    // سوراخ‌ها قبل از شاخص قرار می‌گیرند تا با چرخش ساعت‌گرد روان و بدون نیاز به دور اضافی برسند
-    // اولین سوراخ در 90 درجه (کمی بالاتر از شاخص) و بقیه در خلاف ساعت‌گرد چیده می‌شوند
     const FIRST_HOLE_ANGLE = 85;
     const STEP_ANGLE = 40;
-
-    // محاسبه دقیق زاویه چرخش ساعت‌گرد مورد نیاز برای رسیدن هر سوراخ به شاخص
-    const targetAngles = DIAL_ITEMS.map((_, index) => {
-      // زاویه اولیه هر سوراخ
-      const holeAngle = FIRST_HOLE_ANGLE - (index * STEP_ANGLE);
-      // زاویه چرخش ساعت‌گرد مثبت
-      let neededRotation = (STOP_ANGLE - holeAngle) % 360;
-      if (neededRotation < 0) neededRotation += 360;
-      return neededRotation;
-    });
-
-    // حداکثر چرخش مجاز (حتی تا ۷۲۰ درجه برای راحتی درگ)
-    const MAX_ROTATION = 720;
+    const MAX_ROTATION = 360;
+    const TOLERANCE = 14;
+    const AMBIENT_PREVIEW_DIFF = 55; // فاصله‌ای که از آن به بعد پیش‌نمایش تم محیطی شروع می‌شود
 
     let currentRotation = 0;
     let isDragging = false;
     let hasMoved = false;
     let previousPointerAngle = 0;
-    let selectedIndex = null;
+    let tappedIndex = null;
     let lastSoundRotation = 0;
+
+    // مدیریت کراس‌فید بین دو لایه محیطی
+    let activeLayer = "a";
+    let currentThemeId = null;
+
+    function applyAmbient(item) {
+      if (!item) {
+        if (currentThemeId === null) return;
+        ambientA.style.opacity = 0;
+        ambientB.style.opacity = 0;
+        currentThemeId = null;
+        root.style.setProperty("--dial-rotor-live", "var(--dial-rotor)");
+        root.style.setProperty("--dial-border-live", "var(--dial-border)");
+        root.style.setProperty("--live-accent", "var(--accent-lime)");
+        return;
+      }
+
+      if (currentThemeId === item.id) return;
+
+      const nextLayer = activeLayer === "a" ? ambientB : ambientA;
+      const prevLayer = activeLayer === "a" ? ambientA : ambientB;
+
+      nextLayer.style.background = item.ambient;
+      nextLayer.style.opacity = 1;
+      prevLayer.style.opacity = 0;
+
+      activeLayer = activeLayer === "a" ? "b" : "a";
+      currentThemeId = item.id;
+
+      root.style.setProperty("--dial-rotor-live", item.dialRotor);
+      root.style.setProperty("--dial-border-live", item.dialBorder);
+      root.style.setProperty("--live-accent", item.color);
+    }
 
     let audioCtx = null;
     function playClickSound() {
@@ -345,24 +455,78 @@
       return degrees;
     }
 
+    function normalizeAngle(deg) {
+      let a = deg % 360;
+      if (a < 0) a += 360;
+      return a;
+    }
+
+    function angleDiff(a, b) {
+      const diff = Math.abs(normalizeAngle(a) - normalizeAngle(b));
+      return Math.min(diff, 360 - diff);
+    }
+
+    function findHoleNearStop(rotation) {
+      let bestIndex = null;
+      let bestDiff = Infinity;
+      DIAL_ITEMS.forEach((_, index) => {
+        const holeAngle = FIRST_HOLE_ANGLE - (index * STEP_ANGLE);
+        const currentAngle = holeAngle + rotation;
+        const diff = angleDiff(currentAngle, STOP_ANGLE);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIndex = index;
+        }
+      });
+      return { index: bestIndex, diff: bestDiff };
+    }
+
+    const holeElements = [];
+
+    function positionOf(index) {
+      const angle = FIRST_HOLE_ANGLE - (index * STEP_ANGLE);
+      const radians = angle * (Math.PI / 180);
+      return {
+        x: CENTER + RADIUS * Math.cos(radians),
+        y: CENTER + RADIUS * Math.sin(radians)
+      };
+    }
+
+    function markActiveHole(index) {
+      holeElements.forEach((h, i) => {
+        h.classList.toggle("active-target", i === index);
+      });
+    }
+
     function createDialItems() {
       DIAL_ITEMS.forEach((item, index) => {
         const hole = document.createElement("div");
         hole.className = "dial-hole";
         hole.title = item.title;
         hole.dataset.index = index;
+        hole.style.setProperty("--brand-color", item.color);
 
-        const angle = FIRST_HOLE_ANGLE - (index * STEP_ANGLE);
-        const radians = angle * (Math.PI / 180);
-
-        const x = CENTER + RADIUS * Math.cos(radians);
-        const y = CENTER + RADIUS * Math.sin(radians);
-
+        const { x, y } = positionOf(index);
         hole.style.left = `${x}px`;
         hole.style.top = `${y}px`;
         hole.innerHTML = `<i class="${item.icon}"></i>`;
 
+        // با هاور روی هر دکمه، کل فضا پیش‌نمایش تم همان مقصد را می‌گیرد (بدون هیچ نور دور دکمه)
+        hole.addEventListener("pointerenter", () => {
+          if (isDragging) return;
+          markActiveHole(index);
+          applyAmbient(item);
+          statusText.textContent = `آماده اتصال: ${item.title}`;
+        });
+        hole.addEventListener("pointerleave", () => {
+          if (isDragging) return;
+          markActiveHole(null);
+          applyAmbient(null);
+          statusText.textContent = "آماده برای شماره‌گیری...";
+        });
+
         wheel.appendChild(hole);
+        holeElements.push(hole);
       });
     }
 
@@ -370,11 +534,11 @@
       event.preventDefault();
       isDragging = true;
       hasMoved = false;
-      selectedIndex = null;
+      tappedIndex = null;
 
       const clickedHole = event.target.closest(".dial-hole");
       if (clickedHole) {
-        selectedIndex = Number(clickedHole.dataset.index);
+        tappedIndex = Number(clickedHole.dataset.index);
       }
 
       previousPointerAngle = getPointerAngle(event);
@@ -390,7 +554,6 @@
       const currentPointerAngle = getPointerAngle(event);
       let deltaAngle = currentPointerAngle - previousPointerAngle;
 
-      // محاسبه تفاوت زاویه پیوسته (بدون جهش)
       if (deltaAngle > 180) deltaAngle -= 360;
       if (deltaAngle < -180) deltaAngle += 360;
 
@@ -400,7 +563,6 @@
 
       let nextRotation = currentRotation + deltaAngle;
 
-      // چرخش ساعت‌گرد بدون محدودیت گیر کردن
       if (nextRotation < 0) nextRotation = 0;
       if (nextRotation > MAX_ROTATION) nextRotation = MAX_ROTATION;
 
@@ -412,8 +574,21 @@
       setRotation(nextRotation, false);
       previousPointerAngle = currentPointerAngle;
 
-      if (selectedIndex !== null) {
-        statusText.textContent = `در حال چرخش: ${DIAL_ITEMS[selectedIndex].title}`;
+      const nearest = findHoleNearStop(nextRotation);
+      if (nearest.index !== null) {
+        const item = DIAL_ITEMS[nearest.index];
+        statusText.textContent =
+          nearest.diff <= TOLERANCE
+            ? `آماده اتصال: ${item.title}`
+            : `در حال چرخش به سمت ${item.title}...`;
+
+        if (nearest.diff <= AMBIENT_PREVIEW_DIFF) {
+          markActiveHole(nearest.index);
+          applyAmbient(item);
+        } else {
+          markActiveHole(null);
+          applyAmbient(null);
+        }
       }
     });
 
@@ -422,35 +597,32 @@
       isDragging = false;
       wheel.releasePointerCapture?.(event.pointerId);
 
-      // اگر کاربر فقط کلیک کرده باشد
-      if (!hasMoved && selectedIndex !== null) {
-        const index = selectedIndex;
-        selectedIndex = null;
+      if (!hasMoved && tappedIndex !== null) {
+        const index = tappedIndex;
+        tappedIndex = null;
         triggerAutoDial(index);
         return;
       }
 
-      let selectedTarget = null;
-      if (selectedIndex !== null) {
-        const requiredTarget = targetAngles[selectedIndex];
-        // تشخیص رسیدن به شاخص با تلرانس مناسب
-        if (currentRotation >= requiredTarget - 25) {
-          selectedTarget = selectedIndex;
-        }
-      }
+      const nearest = findHoleNearStop(currentRotation);
+      const selectedTarget = nearest.diff <= TOLERANCE ? nearest.index : null;
 
-      // بازگشت فنری به حالت اولیه
       setRotation(0, true);
 
       if (selectedTarget !== null) {
+        const item = DIAL_ITEMS[selectedTarget];
+        markActiveHole(selectedTarget);
+        applyAmbient(item);
         executeRedirect(selectedTarget);
       } else {
+        markActiveHole(null);
+        applyAmbient(null);
         setTimeout(() => {
           statusText.textContent = "آماده برای شماره‌گیری...";
         }, 300);
       }
 
-      selectedIndex = null;
+      tappedIndex = null;
     }
 
     wheel.addEventListener("pointerup", finishDragging);
@@ -458,10 +630,13 @@
 
     function triggerAutoDial(index) {
       const item = DIAL_ITEMS[index];
-      const targetRotation = targetAngles[index];
+      const holeAngle = FIRST_HOLE_ANGLE - (index * STEP_ANGLE);
+      let neededRotation = normalizeAngle(STOP_ANGLE - holeAngle);
 
       playClickSound();
-      setRotation(targetRotation, true);
+      markActiveHole(index);
+      applyAmbient(item);
+      setRotation(neededRotation, true);
       statusText.textContent = `در حال اتصال به ${item.title}...`;
 
       setTimeout(() => {
