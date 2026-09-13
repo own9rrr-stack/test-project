@@ -1,32 +1,399 @@
 <!DOCTYPE html>
-<html>
+<html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<script>
-    const ua = navigator.userAgent.toLowerCase();
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rotary Hub | انتقال هوشمند</title>
+  <!-- فونت وزیرمتن و آیکون‌های FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
 
-    // تابع هدایت بعد از ۳ ثانیه
-    setTimeout(function() {
+  <style>
+    :root {
+      --bg-dark: #061a14;
+      --bg-gradient: radial-gradient(circle at center, #0f2d24 0%, #061a14 100%);
+      --accent-yellow: #facc15;
+      --accent-lime: #4ade80;
+      --dial-base: #0b221a;
+      --dial-rotor: rgba(18, 53, 41, 0.7);
+      --dial-border: #1e4b3c;
+      --hole-border: #2dd4bf;
+      --text-main: #f0fdf4;
+      --text-muted: #86efac;
+    }
 
-        // اگر کاربر آیفون یا آیپد بود → سافاری
-        if (ua.includes("iphone") || ua.includes("ipad")) {
-            window.location.href = "https://www.anrc.shop/fa/";
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
 
-        // اگر کاربر اندروید بود → کروم
-        else if (ua.includes("android")) {
-            window.location.href = "googlechrome://navigate?url=https://www.anrc.shop/fa/";
-        }
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-main);
+      overflow: hidden;
+    }
 
-        // اگر کاربر ویندوز یا مک بود → مرورگر معمولی
-        else {
-            window.location.href = "https://www.anrc.shop/fa/";
-        }
+    .header-text {
+      text-align: center;
+      margin-bottom: 2rem;
+      z-index: 10;
+    }
 
-    }, 3000); // ۳۰۰۰ میلی‌ثانیه = ۳ ثانیه
-</script>
+    .header-text h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent-yellow);
+      letter-spacing: -0.5px;
+      margin-bottom: 0.4rem;
+    }
+
+    .header-text p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      opacity: 0.8;
+    }
+
+    /* کانتینر اصلی گردونه */
+    .dial-container {
+      position: relative;
+      width: 340px;
+      height: 340px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* پد پایه زیرین تلفن */
+    .dial-base {
+      position: absolute;
+      width: 330px;
+      height: 330px;
+      background: var(--dial-base);
+      border-radius: 50%;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.7),
+        inset 0 2px 4px rgba(255, 255, 255, 0.05),
+        0 0 0 8px var(--dial-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* بخش مرکزی ثابت */
+    .dial-center {
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      background: radial-gradient(circle, #163e31 0%, #091c15 100%);
+      border-radius: 50%;
+      border: 3px solid var(--accent-yellow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 6;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      text-align: center;
+      padding: 10px;
+      pointer-events: none;
+    }
+
+    .dial-center i {
+      font-size: 1.8rem;
+      color: var(--accent-yellow);
+      margin-bottom: 4px;
+      transition: transform 0.3s;
+    }
+
+    .dial-center span {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* پین یا شاخص فلزی ترمز (Finger Stop) */
+    .finger-stop {
+      position: absolute;
+      bottom: 25px;
+      left: 70px;
+      width: 28px;
+      height: 48px;
+      background: linear-gradient(135deg, #facc15, #ca8a04);
+      clip-path: polygon(0 0, 100% 30%, 80% 100%, 0% 100%);
+      border-radius: 4px;
+      z-index: 10;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      transform: rotate(-15deg);
+    }
+
+    /* دیسک شیشه‌ای متحرک */
+    .rotary-wheel {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: var(--dial-rotor);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 5;
+      cursor: grab;
+      touch-action: none;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .rotary-wheel:active {
+      cursor: grabbing;
+    }
+
+    /* سوراخ‌های شماره‌گیر */
+    .dial-hole {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: rgba(6, 26, 20, 0.9);
+      border: 2px solid var(--accent-lime);
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.8), 0 2px 5px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      font-size: 1.3rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .dial-hole:hover {
+      border-color: var(--accent-yellow);
+      background: rgba(15, 45, 36, 0.95);
+    }
+
+    .dial-hole i {
+      pointer-events: none;
+    }
+
+    /* وضعیت هدایت */
+    .status-badge {
+      margin-top: 2rem;
+      padding: 8px 18px;
+      background: rgba(74, 222, 128, 0.1);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--accent-lime);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-lime);
+      box-shadow: 0 0 10px var(--accent-lime);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+  </style>
 </head>
 <body>
-در حال بارگذاری...
+
+  <div class="header-text">
+    <h1>هاب ارتباطی مدرن</h1>
+    <p>برای اتصال، دکمه مورد نظر را تا شاخص زرد بچرخانید</p>
+  </div>
+
+  <div class="dial-container">
+    <div class="dial-base"></div>
+    
+    <!-- شاخص توقف -->
+    <div class="finger-stop" title="شاخص توقف"></div>
+
+    <!-- مرکز گردونه -->
+    <div class="dial-center">
+      <i class="fa-solid fa-phone-volume"></i>
+      <span>انتخاب و شماره‌گیری</span>
+    </div>
+
+    <!-- دیسک متحرک چرخشی -->
+    <div class="rotary-wheel" id="wheel"></div>
+  </div>
+
+  <div class="status-badge">
+    <div class="pulse"></div>
+    <span id="status-text">آماده برای شماره‌گیری...</span>
+  </div>
+
+  <script>
+    // آیتم‌ها و لینک‌های اختصاصی
+    const DIAL_ITEMS = [
+      { id: 'tg-support', title: 'پشتیبانی تلگرام', icon: 'fa-brands fa-telegram', url: 'https://t.me/betmizlivesupportbot' },
+      { id: 'instagram', title: 'اینستاگرام', icon: 'fa-brands fa-instagram', url: 'https://instagram.com' },
+      { id: 'tg-channel', title: 'کانال خبری', icon: 'fa-solid fa-bullhorn', url: 'https://t.me/BetMiz' },
+      { id: 'website', title: 'وبسایت رسمی', icon: 'fa-solid fa-globe', url: 'https://www.betmiz.com' },
+      { 
+        id: 'app-download', title: 'دانلود مستقیم اپلیکیشن', icon: 'fa-solid fa-download', // یا 'fa-brands fa-android' برای آیکون اندروید
+        url: 'https://android.codeideally.com/v2/mp/prod/18756065/app.apk' // آدرس مستقیم فایل دانلودی شما
+      }
+    ];
+
+    const wheel = document.getElementById('wheel');
+    const statusText = document.getElementById('status-text');
+
+    const RADIUS = 115; // فاصله سوراخ‌ها از مرکز
+    const STOP_ANGLE = 135; // زاویه متناظر با Finger Stop (درجه)
+    const START_ANGLE = 220; // زاویه قرارگیری اولین سوراخ
+    const STEP_ANGLE = 35;  // فاصله زاویه‌ای بین هر سوراخ
+
+    let currentRotation = 0;
+    let isDragging = false;
+    let startAngle = 0;
+    let initialRotation = 0;
+    let activeItem = null;
+
+    // افکت صوتی با Web Audio API بدون نیاز به فایل صوتی جانبی
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playClickSound() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+    }
+
+    // جای‌گذاری سوراخ‌ها روی چرخ دنده
+    DIAL_ITEMS.forEach((item, index) => {
+      const hole = document.createElement('div');
+      hole.className = 'dial-hole';
+      
+      const angleDeg = START_ANGLE + (index * STEP_ANGLE);
+      const angleRad = (angleDeg * Math.PI) / 180;
+      
+      const x = 160 + RADIUS * Math.cos(angleRad);
+      const y = 160 + RADIUS * Math.sin(angleRad);
+      
+      hole.style.left = `${x}px`;
+      hole.style.top = `${y}px`;
+      hole.innerHTML = `<i class="${item.icon}"></i>`;
+      hole.setAttribute('title', item.title);
+      
+      // اگر مستقیماً کلیک شد، خودش خودکار بچرخد
+      hole.addEventListener('click', (e) => {
+        if (!isDragging) {
+          triggerAutoDial(item, angleDeg);
+        }
+      });
+
+      wheel.appendChild(hole);
+    });
+
+    function setRotation(deg, smooth = false) {
+      wheel.style.transition = smooth ? 'transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none';
+      wheel.style.transform = `rotate(${deg}deg)`;
+      currentRotation = deg;
+    }
+
+    function getAngle(e) {
+      const rect = wheel.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const rad = Math.atan2(clientY - cy, clientX - cx);
+      let deg = (rad * 180) / Math.PI;
+      return deg < 0 ? deg + 360 : deg;
+    }
+
+    // عملکرد Drag با موس و لمس
+    wheel.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      startAngle = getAngle(e);
+      initialRotation = currentRotation;
+      wheel.style.transition = 'none';
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const currentMouseAngle = getAngle(e);
+      let delta = currentMouseAngle - startAngle;
+      
+      if (delta < -180) delta += 360;
+      if (delta > 180) delta -= 360;
+
+      let newRot = initialRotation + delta;
+      
+      // محدودیت چرخش در جهت ساعت‌گرد
+      if (newRot >= 0 && newRot <= 250) {
+        if (Math.abs(newRot - currentRotation) > 15) {
+          playClickSound();
+        }
+        setRotation(newRot, false);
+      }
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      
+      // بررسی اینکه آیا به حد کافی نزدیک به استاپ چرخیده یا نه
+      let triggered = false;
+      DIAL_ITEMS.forEach((item, index) => {
+        const itemAngle = START_ANGLE + (index * STEP_ANGLE);
+        const targetRot = (360 + STOP_ANGLE - itemAngle) % 360;
+        if (Math.abs(currentRotation - targetRot) < 20) {
+          executeRedirect(item);
+          triggered = true;
+        }
+      });
+
+      // بازگشت فنری به نقطه صفر
+      setRotation(0, true);
+      if (!triggered) {
+        statusText.innerText = 'آماده برای شماره‌گیری...';
+      }
+    });
+
+    // چرخش خودکار با کلیک روی آیتم
+    function triggerAutoDial(item, itemAngle) {
+      const targetRot = (360 + STOP_ANGLE - itemAngle) % 360;
+      playClickSound();
+      setRotation(targetRot, true);
+      
+      statusText.innerText = `در حال اتصال به ${item.title}...`;
+
+      setTimeout(() => {
+        setRotation(0, true);
+        executeRedirect(item);
+      }, 700);
+    }
+
+    function executeRedirect(item) {
+      statusText.innerText = `انتقال به ${item.title}`;
+      setTimeout(() => {
+        window.open(item.url, '_blank');
+      }, 400);
+    }
+  </script>
 </body>
 </html>
