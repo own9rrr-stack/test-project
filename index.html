@@ -51,13 +51,10 @@
       color: var(--text-main);
       font-family: "Vazirmatn", Tahoma, sans-serif;
       background: var(--bg-gradient);
-      isolation: isolate; /* تضمین می‌کند لایه‌های محیطی زیر محتوا بمانند */
+      isolation: isolate;
     }
 
-    /* ---------------------------------------------------- */
-    /* لایه‌های محیطی: کل فضای پشت صفحه بر اساس انتخاب کاربر تغییر رنگ و نور می‌دهد */
-    /* از دو لایه برای کراس‌فید نرم بین تم‌ها استفاده می‌شود */
-    /* ---------------------------------------------------- */
+    /* لایه‌های محیطی پشت صفحه */
     .ambient-layer {
       position: fixed;
       inset: 0;
@@ -161,11 +158,11 @@
 
     .dial-center span {
       color: #fff;
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-size: 0.8rem;
+      font-weight: 700;
     }
 
-    /* شاخص توقف فلزی */
+    /* شاخص توقف */
     .finger-stop {
       position: absolute;
       z-index: 10;
@@ -209,7 +206,6 @@
       transition: color 0.25s ease;
     }
 
-    /* سوراخ نزدیک به شاخص فقط با تغییر رنگ لبه مشخص می‌شود، بدون هیچ هاله نوری */
     .dial-hole.active-target {
       border-color: var(--brand-color, var(--accent-yellow));
     }
@@ -266,8 +262,8 @@
     <div class="finger-stop" title="شاخص توقف"></div>
 
     <div class="dial-center">
-      <i class="fa-solid fa-phone-volume"></i>
-      <span>انتخاب و شماره‌گیری</span>
+      <i class="fa-solid fa-compass"></i>
+      <span>راهتو پیدا کن</span>
     </div>
 
     <div class="rotary-wheel" id="wheel"></div>
@@ -275,11 +271,10 @@
 
   <div class="status-badge">
     <div class="pulse"></div>
-    <span id="status-text">آماده برای شماره‌گیری...</span>
+    <span id="status-text">گردونه آماده‌ست؛ مسیرتو انتخاب کن...</span>
   </div>
 
   <script>
-    // هر آیتم علاوه بر رنگ خودش، یک "تم محیطی" کامل دارد که کل پس‌زمینه و گردونه را متحول می‌کند
     const DIAL_ITEMS = [
       {
         id: "tg-support",
@@ -357,6 +352,8 @@
       }
     ];
 
+    const DEFAULT_STATUS_TEXT = "گردونه آماده‌ست؛ مسیرتو انتخاب کن...";
+
     const wheel = document.getElementById("wheel");
     const statusText = document.getElementById("status-text");
     const root = document.documentElement;
@@ -372,7 +369,7 @@
     const STEP_ANGLE = 40;
     const MAX_ROTATION = 360;
     const TOLERANCE = 14;
-    const AMBIENT_PREVIEW_DIFF = 55; // فاصله‌ای که از آن به بعد پیش‌نمایش تم محیطی شروع می‌شود
+    const AMBIENT_PREVIEW_DIFF = 55;
 
     let currentRotation = 0;
     let isDragging = false;
@@ -381,15 +378,14 @@
     let tappedIndex = null;
     let lastSoundRotation = 0;
 
-    // مدیریت کراس‌فید بین دو لایه محیطی
     let activeLayer = "a";
     let currentThemeId = null;
 
     function applyAmbient(item) {
       if (!item) {
         if (currentThemeId === null) return;
-        ambientA.style.opacity = 0;
-        ambientB.style.opacity = 0;
+        ambientA.style.opacity = "0";
+        ambientB.style.opacity = "0";
         currentThemeId = null;
         root.style.setProperty("--dial-rotor-live", "var(--dial-rotor)");
         root.style.setProperty("--dial-border-live", "var(--dial-border)");
@@ -403,8 +399,8 @@
       const prevLayer = activeLayer === "a" ? ambientA : ambientB;
 
       nextLayer.style.background = item.ambient;
-      nextLayer.style.opacity = 1;
-      prevLayer.style.opacity = 0;
+      nextLayer.style.opacity = "1";
+      prevLayer.style.opacity = "0";
 
       activeLayer = activeLayer === "a" ? "b" : "a";
       currentThemeId = item.id;
@@ -438,6 +434,7 @@
     }
 
     function setRotation(degrees, smooth = false) {
+      if (!wheel) return;
       wheel.style.transition = smooth
         ? "transform 0.65s cubic-bezier(0.2, 0.9, 0.3, 1.2)"
         : "none";
@@ -499,6 +496,10 @@
     }
 
     function createDialItems() {
+      if (!wheel) return;
+      wheel.innerHTML = "";
+      holeElements.length = 0;
+
       DIAL_ITEMS.forEach((item, index) => {
         const hole = document.createElement("div");
         hole.className = "dial-hole";
@@ -511,18 +512,17 @@
         hole.style.top = `${y}px`;
         hole.innerHTML = `<i class="${item.icon}"></i>`;
 
-        // با هاور روی هر دکمه، کل فضا پیش‌نمایش تم همان مقصد را می‌گیرد (بدون هیچ نور دور دکمه)
         hole.addEventListener("pointerenter", () => {
           if (isDragging) return;
           markActiveHole(index);
           applyAmbient(item);
-          statusText.textContent = `آماده اتصال: ${item.title}`;
+          if (statusText) statusText.textContent = `آماده اتصال: ${item.title}`;
         });
         hole.addEventListener("pointerleave", () => {
           if (isDragging) return;
           markActiveHole(null);
           applyAmbient(null);
-          statusText.textContent = "آماده برای شماره‌گیری...";
+          if (statusText) statusText.textContent = DEFAULT_STATUS_TEXT;
         });
 
         wheel.appendChild(hole);
@@ -530,103 +530,107 @@
       });
     }
 
-    wheel.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      isDragging = true;
-      hasMoved = false;
-      tappedIndex = null;
+    if (wheel) {
+      wheel.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        isDragging = true;
+        hasMoved = false;
+        tappedIndex = null;
 
-      const clickedHole = event.target.closest(".dial-hole");
-      if (clickedHole) {
-        tappedIndex = Number(clickedHole.dataset.index);
-      }
+        const clickedHole = event.target.closest(".dial-hole");
+        if (clickedHole) {
+          tappedIndex = Number(clickedHole.dataset.index);
+        }
 
-      previousPointerAngle = getPointerAngle(event);
-      lastSoundRotation = currentRotation;
+        previousPointerAngle = getPointerAngle(event);
+        lastSoundRotation = currentRotation;
 
-      wheel.setPointerCapture?.(event.pointerId);
-      wheel.style.transition = "none";
-    });
+        wheel.setPointerCapture?.(event.pointerId);
+        wheel.style.transition = "none";
+      });
 
-    wheel.addEventListener("pointermove", (event) => {
-      if (!isDragging) return;
+      wheel.addEventListener("pointermove", (event) => {
+        if (!isDragging) return;
 
-      const currentPointerAngle = getPointerAngle(event);
-      let deltaAngle = currentPointerAngle - previousPointerAngle;
+        const currentPointerAngle = getPointerAngle(event);
+        let deltaAngle = currentPointerAngle - previousPointerAngle;
 
-      if (deltaAngle > 180) deltaAngle -= 360;
-      if (deltaAngle < -180) deltaAngle += 360;
+        if (deltaAngle > 180) deltaAngle -= 360;
+        if (deltaAngle < -180) deltaAngle += 360;
 
-      if (Math.abs(deltaAngle) > 0.4) {
-        hasMoved = true;
-      }
+        if (Math.abs(deltaAngle) > 0.4) {
+          hasMoved = true;
+        }
 
-      let nextRotation = currentRotation + deltaAngle;
+        let nextRotation = currentRotation + deltaAngle;
 
-      if (nextRotation < 0) nextRotation = 0;
-      if (nextRotation > MAX_ROTATION) nextRotation = MAX_ROTATION;
+        if (nextRotation < 0) nextRotation = 0;
+        if (nextRotation > MAX_ROTATION) nextRotation = MAX_ROTATION;
 
-      if (Math.abs(nextRotation - lastSoundRotation) >= 16) {
-        playClickSound();
-        lastSoundRotation = nextRotation;
-      }
+        if (Math.abs(nextRotation - lastSoundRotation) >= 16) {
+          playClickSound();
+          lastSoundRotation = nextRotation;
+        }
 
-      setRotation(nextRotation, false);
-      previousPointerAngle = currentPointerAngle;
+        setRotation(nextRotation, false);
+        previousPointerAngle = currentPointerAngle;
 
-      const nearest = findHoleNearStop(nextRotation);
-      if (nearest.index !== null) {
-        const item = DIAL_ITEMS[nearest.index];
-        statusText.textContent =
-          nearest.diff <= TOLERANCE
-            ? `آماده اتصال: ${item.title}`
-            : `در حال چرخش به سمت ${item.title}...`;
+        const nearest = findHoleNearStop(nextRotation);
+        if (nearest.index !== null && statusText) {
+          const item = DIAL_ITEMS[nearest.index];
+          statusText.textContent =
+            nearest.diff <= TOLERANCE
+              ? `آماده اتصال: ${item.title}`
+              : `در حال هدایت به: ${item.title}`;
 
-        if (nearest.diff <= AMBIENT_PREVIEW_DIFF) {
-          markActiveHole(nearest.index);
+          if (nearest.diff <= AMBIENT_PREVIEW_DIFF) {
+            markActiveHole(nearest.index);
+            applyAmbient(item);
+          } else {
+            markActiveHole(null);
+            applyAmbient(null);
+          }
+        }
+      });
+
+      function finishDragging(event) {
+        if (!isDragging) return;
+        isDragging = false;
+        wheel.releasePointerCapture?.(event.pointerId);
+
+        if (!hasMoved && tappedIndex !== null) {
+          const index = tappedIndex;
+          tappedIndex = null;
+          triggerAutoDial(index);
+          return;
+        }
+
+        const nearest = findHoleNearStop(currentRotation);
+        const selectedTarget = nearest.diff <= TOLERANCE ? nearest.index : null;
+
+        setRotation(0, true);
+
+        if (selectedTarget !== null) {
+          const item = DIAL_ITEMS[selectedTarget];
+          markActiveHole(selectedTarget);
           applyAmbient(item);
+          executeRedirect(selectedTarget);
         } else {
           markActiveHole(null);
           applyAmbient(null);
+          if (statusText) {
+            setTimeout(() => {
+              statusText.textContent = DEFAULT_STATUS_TEXT;
+            }, 300);
+          }
         }
-      }
-    });
 
-    function finishDragging(event) {
-      if (!isDragging) return;
-      isDragging = false;
-      wheel.releasePointerCapture?.(event.pointerId);
-
-      if (!hasMoved && tappedIndex !== null) {
-        const index = tappedIndex;
         tappedIndex = null;
-        triggerAutoDial(index);
-        return;
       }
 
-      const nearest = findHoleNearStop(currentRotation);
-      const selectedTarget = nearest.diff <= TOLERANCE ? nearest.index : null;
-
-      setRotation(0, true);
-
-      if (selectedTarget !== null) {
-        const item = DIAL_ITEMS[selectedTarget];
-        markActiveHole(selectedTarget);
-        applyAmbient(item);
-        executeRedirect(selectedTarget);
-      } else {
-        markActiveHole(null);
-        applyAmbient(null);
-        setTimeout(() => {
-          statusText.textContent = "آماده برای شماره‌گیری...";
-        }, 300);
-      }
-
-      tappedIndex = null;
+      wheel.addEventListener("pointerup", finishDragging);
+      wheel.addEventListener("pointercancel", finishDragging);
     }
-
-    wheel.addEventListener("pointerup", finishDragging);
-    wheel.addEventListener("pointercancel", finishDragging);
 
     function triggerAutoDial(index) {
       const item = DIAL_ITEMS[index];
@@ -637,7 +641,7 @@
       markActiveHole(index);
       applyAmbient(item);
       setRotation(neededRotation, true);
-      statusText.textContent = `در حال اتصال به ${item.title}...`;
+      if (statusText) statusText.textContent = `در حال اتصال به ${item.title}...`;
 
       setTimeout(() => {
         setRotation(0, true);
@@ -647,7 +651,7 @@
 
     function executeRedirect(index) {
       const item = DIAL_ITEMS[index];
-      statusText.textContent = `انتقال به ${item.title}`;
+      if (statusText) statusText.textContent = `انتقال به ${item.title}`;
       setTimeout(() => {
         window.open(item.url, "_blank", "noopener,noreferrer");
       }, 350);
